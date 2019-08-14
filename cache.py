@@ -1,16 +1,17 @@
 import math
+import time
 
 class Cache:
 
     def __init__(self, cache_size):
         # Init the cache size
-        # Use dict to store key-(value, weight)
-        # Use list to record the access time.
-        # Set the current_time is cache size because of the full capacity.
         self.cache_size = cache_size
-        self.cache_dict = dict()
+
+        # Use cache_list to store the [[key, value, weight], ...].
         self.cache_list = list()
-        self.current_time = cache_size
+
+        # Use time_dict to store key-timestamp.
+        self.time_dict = dict()
 
     def is_full_capacity(self):
         # Check the list if it is in full capacity.
@@ -18,56 +19,77 @@ class Cache:
 
     def get(self, key):
         # Retrieve the key if it is in the dictionary.
-        if key not in self.cache_dict:
-            return -1
-        else:
-        # move the key in the list to the last elment and return the key's value in the dictionary.
-            self.cache_list.remove(key)
-            self.cache_list.append(key)
-            return self.cache_dict[key][0]
+        for i in range(0, len(self.cache_list)):
+            if key == self.cache_list[i][0]:
+                self.time_dict[key] = time.time()
+                return self.cache_list[i][1]
+        # the key not found.  
+        return -1 
 
     def put(self, key, value, weight):
-        # Check key if it is in the dict.
-        # In the dict -> only update the value and weight
-        # Not in the dict -> do other condition.
-        if key not in self.cache_dict:
-            # Check the list if it's full.
-            # full -> remove the invalid key, then append the key to the list and add the key, [value,weight] to the dict.
-            # not full -> append the key to the list and add the key, [value,weight] to the dict.
+        notFound = True
+        # Retrive the key whether it is in the list.
+        for i in range(0, len(self.cache_list)):
+            if key == self.cache_list[i][0]:
+                self.time_dict[key] = time.time()
+                self.cache_list[i][1], self.cache_list[i][2] = value, weight
+                notFound = False
+                
+        # the key doesn't exist in the list.
+        if notFound:
+            current_time = time.time()
+            # the capacity if it is full.
             if self.is_full_capacity():
+                # find the lowest score in current cache list.
                 score_list = [0] * self.cache_size
-                # calculate the score for each key.
                 for index in range(self.cache_size):
-                    score_list[index] = self.cache_dict[self.cache_list[index]][1] / (math.log(self.current_time - index) + 0.0000000000001)
-                replace_key = self.cache_list[score_list.index(min(score_list))]
+                    score_list[index] = self.cache_list[index][1] / math.log(current_time - self.time_dict[self.cache_list[index][0]])
+                replace_index = score_list.index(min(score_list))
+                
+                # remove the key which has lower score from the time dict.
+                self.time_dict.pop(self.cache_list[replace_index][0], None)
 
-                # remove the lowerest score key in the list and dict.
-                self.cache_list.remove(replace_key)
-                self.cache_dict.pop(replace_key, None)
-                # add the new key to the list and dict.
-                self.cache_list.append(key)
-                self.cache_dict[key] = [value, weight]
+                # replace the index's list for new list.
+                self.cache_list[replace_index] = [key, value, weight]
+                
+                # update access time for the new key.
+                self.time_dict[key] = current_time
+
             else:
-                # add the new key to the list and dict.
-                self.cache_list.append(key)
-                self.cache_dict[key] = [value, weight]
-        else: 
-            # modify the key's val and weight if it already exist in dict.
-            self.cache_dict[key] = [value, weight]
+                # update access time for the new key.
+                self.time_dict[key] = current_time
+
+                # add the new key to the list
+                self.cache_list.append([key, value, weight])
 
 def main():
     cache = Cache(3)
 
     cache.put('key1', 7, 6)
+    print(cache.cache_list)
+
     cache.put('key2', 2, 3)
+    print(cache.cache_list)
+
     cache.put('key3', 3, 2)
+    print(cache.cache_list)
+
     cache.put('key4', 4, 8)
+    print(cache.cache_list)
+
     print(cache.get('key2'))
     print(cache.get('key1'))
+
     cache.put('key1', 7, 4)
+    print(cache.cache_list)
+
     cache.put('key1', 3, 1)
+    print(cache.cache_list)
+
     print(cache.get('key1'))
+    
     cache.put('key5', 9, 1)
+    print(cache.cache_list)
 
 if __name__ == '__main__':
     main()
